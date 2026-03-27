@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 
-
-// VERSION FINALE SIMPLIFIÉE — VUE GLOBALE + FILTRES + ACTIONS
+// ===== OUTILS =====
 
 function ageJours(date) {
   if (!date) return 0;
@@ -27,38 +26,32 @@ function statutTraitement(c) {
   if (d < now) return "🔴";
   return "🟢";
 }
+
 function couleurCollier(id) {
   const couleurs = {
-    1: "red",
-    2: "blue",
-    3: "green",
-    4: "yellow",
-    5: "orange",
-    6: "purple",
-    7: "pink",
-    8: "brown",
-    9: "black",
-    10: "gray",
-    11: "cyan",
-    12: "magenta",
-    13: "lime",
-    14: "teal",
-    15: "gold",
-    16: "navy"
+    1: "red", 2: "blue", 3: "green", 4: "yellow",
+    5: "orange", 6: "purple", 7: "pink", 8: "brown",
+    9: "black", 10: "gray", 11: "cyan", 12: "magenta",
+    13: "lime", 14: "teal", 15: "gold", 16: "navy"
   };
-
-  const num = parseInt(id);
-  return couleurs[num] || null;
+  return couleurs[parseInt(id)] || null;
 }
+
+// ===== APP =====
+
 export default function App() {
   const [chevreaux, setChevreaux] = useState([]);
+
   const [nouveau, setNouveau] = useState({
     id: "",
     sexe: "",
     naissance: "",
     lot: "Couveuse",
-    poids: ""
+    poids: "",
+    mere: "",
+    pere: ""
   });
+
   const [selection, setSelection] = useState([]);
   const [filtreLot, setFiltreLot] = useState("");
   const [tri, setTri] = useState("");
@@ -72,12 +65,40 @@ export default function App() {
     localStorage.setItem("elevage", JSON.stringify(chevreaux));
   }, [chevreaux]);
 
+  // ===== ACTIONS =====
+
+  const ajouterChevreau = () => {
+    if (!nouveau.id) return;
+
+    setChevreaux([
+      ...chevreaux,
+      {
+        ...nouveau,
+        poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
+        pesees: nouveau.poids
+          ? [{ date: new Date(), poids: parseFloat(nouveau.poids) }]
+          : [],
+        traitements: {}
+      }
+    ]);
+
+    setNouveau({
+      id: "",
+      sexe: "",
+      naissance: "",
+      lot: "Couveuse",
+      poids: "",
+      mere: "",
+      pere: ""
+    });
+  };
+
   const ajouterPesee = (i, poids) => {
     if (!poids) return;
     const copy = [...chevreaux];
-    copy[i].poids = poids;
+    copy[i].poids = parseFloat(poids);
     if (!copy[i].pesees) copy[i].pesees = [];
-    copy[i].pesees.push({ date: new Date(), poids });
+    copy[i].pesees.push({ date: new Date(), poids: parseFloat(poids) });
     setChevreaux(copy);
   };
 
@@ -94,31 +115,8 @@ export default function App() {
     setChevreaux(copy);
     setSelection([]);
   };
-  const ajouterChevreau = () => {
-    if (!nouveau.id) return;
-  
-    setChevreaux([
-      ...chevreaux,
-      {
-        ...nouveau,
-        poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
-        pesees: nouveau.poids
-          ? [{ date: new Date(), poids: parseFloat(nouveau.poids) }]
-          : [],
-        traitements: {}
-      }
-    ]);
-  
-    setNouveau({
-      id: "",
-      sexe: "",
-      naissance: "",
-      lot: "Couveuse",
-      poids: ""
-    });
-  };
+
   const traiter = () => {
-    
     const copy = [...chevreaux];
     const now = new Date();
     selection.forEach(i => {
@@ -132,6 +130,8 @@ export default function App() {
     setSelection([]);
   };
 
+  // ===== FILTRES =====
+
   let liste = [...chevreaux];
 
   if (filtreLot) {
@@ -144,48 +144,58 @@ export default function App() {
 
   const lots = [...new Set(chevreaux.map(c => c.lot))];
 
+  // ===== UI =====
+
   return (
     <div className="p-4 grid gap-4">
 
       <h1 className="text-2xl font-bold">Gestion élevage</h1>
-      {/* AJOUT CHEVREAU */}
-<div className="border p-3">
-  <h2>Ajouter un chevreau</h2>
 
-  <input
-    placeholder="Numéro"
-    value={nouveau.id}
-    onChange={(e)=>setNouveau({...nouveau, id: e.target.value})}
-  />
+      {/* AJOUT */}
+      <div className="border p-3">
+        <h2>Ajouter un chevreau</h2>
 
-  <input
-    placeholder="Sexe"
-    value={nouveau.sexe}
-    onChange={(e)=>setNouveau({...nouveau, sexe: e.target.value})}
-  />
+        <input placeholder="Numéro"
+          value={nouveau.id}
+          onChange={(e)=>setNouveau({...nouveau, id: e.target.value})}
+        />
 
-  <input
-    type="date"
-    value={nouveau.naissance}
-    onChange={(e)=>setNouveau({...nouveau, naissance: e.target.value})}
-  />
+        <select
+          value={nouveau.sexe}
+          onChange={(e)=>setNouveau({...nouveau, sexe: e.target.value})}
+        >
+          <option value="">Sexe</option>
+          <option value="M">Mâle</option>
+          <option value="F">Femelle</option>
+        </select>
 
-  <input
-    placeholder="Lot"
-    value={nouveau.lot}
-    onChange={(e)=>setNouveau({...nouveau, lot: e.target.value})}
-  />
+        <input type="date"
+          value={nouveau.naissance}
+          onChange={(e)=>setNouveau({...nouveau, naissance: e.target.value})}
+        />
 
-  <input
-    placeholder="Poids naissance"
-    value={nouveau.poids}
-    onChange={(e)=>setNouveau({...nouveau, poids: e.target.value})}
-  />
+        <input placeholder="Lot"
+          value={nouveau.lot}
+          onChange={(e)=>setNouveau({...nouveau, lot: e.target.value})}
+        />
 
-  <button onClick={ajouterChevreau}>
-    ➕ Ajouter
-  </button>
-</div>
+        <input placeholder="Poids naissance"
+          value={nouveau.poids}
+          onChange={(e)=>setNouveau({...nouveau, poids: e.target.value})}
+        />
+
+        <input placeholder="Mère"
+          value={nouveau.mere}
+          onChange={(e)=>setNouveau({...nouveau, mere: e.target.value})}
+        />
+
+        <input placeholder="Père"
+          value={nouveau.pere}
+          onChange={(e)=>setNouveau({...nouveau, pere: e.target.value})}
+        />
+
+        <button onClick={ajouterChevreau}>➕ Ajouter</button>
+      </div>
 
       {/* FILTRES */}
       <div className="flex gap-2">
@@ -199,25 +209,54 @@ export default function App() {
 
       {/* TABLEAU */}
       <div>
+
+        {/* ENTÊTES */}
+        <div className="grid grid-cols-10 gap-2 font-bold border-b pb-1">
+          <div>ID</div>
+          <div>Sexe</div>
+          <div>Âge</div>
+          <div>Lot</div>
+          <div>Poids</div>
+          <div>Pesée</div>
+          <div>Traitement</div>
+          <div>Mère</div>
+          <div>Père</div>
+          <div>Action</div>
+        </div>
+
         <div className="p-2">
           {liste.map((c,i)=>(
-            <div key={i} className={`grid grid-cols-8 gap-2 p-2 border mb-1 ${selection.includes(i)?"bg-blue-100":""}`} onClick={()=>toggleSelect(i)}>
+            <div key={i}
+              className={`grid grid-cols-10 gap-2 p-2 border mb-1 ${selection.includes(i)?"bg-blue-100":""}`}
+              onClick={()=>toggleSelect(i)}
+            >
 
               <div style={{
-  backgroundColor: couleurCollier(c.id),
-  color: "white",
-  padding: "4px",
-  borderRadius: "4px"
-}}>
-  #{c.id}
-</div>
+                backgroundColor: couleurCollier(c.id),
+                color: "white",
+                padding: "4px",
+                borderRadius: "4px"
+              }}>
+                #{c.id}
+              </div>
+
               <div>{c.sexe}</div>
               <div>{ageJours(c.naissance)} j</div>
               <div>{c.lot}</div>
-              <div>{c.poids||"-"} kg</div>
+
+              <div>
+                {c.poids ? parseFloat(c.poids).toFixed(2) : "-"} kg
+              </div>
+
               <div>{statutPesee(c)}</div>
               <div>{statutTraitement(c)}</div>
-              <input placeholder="Poids" onBlur={(e)=>ajouterPesee(i,e.target.value)} />
+              <div>{c.mere || "-"}</div>
+              <div>{c.pere || "-"}</div>
+
+              <input
+                placeholder="Poids"
+                onBlur={(e)=>ajouterPesee(i,e.target.value)}
+              />
 
             </div>
           ))}
