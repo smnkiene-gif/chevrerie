@@ -72,31 +72,31 @@ export default function App() {
     setChevreaux(copy);
     setSelection([]);
   };
-
+  const ajouterChevreau = () => {
+    if (!nouveau.id) return;
+  
+    setChevreaux([
+      ...chevreaux,
+      {
+        ...nouveau,
+        poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
+        pesees: nouveau.poids
+          ? [{ date: new Date(), poids: parseFloat(nouveau.poids) }]
+          : [],
+        traitements: {}
+      }
+    ]);
+  
+    setNouveau({
+      id: "",
+      sexe: "",
+      naissance: "",
+      lot: "Couveuse",
+      poids: ""
+    });
+  };
   const traiter = () => {
-    const ajouterChevreau = () => {
-      if (!nouveau.id) return;
     
-      setChevreaux([
-        ...chevreaux,
-        {
-          ...nouveau,
-          poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
-          pesees: nouveau.poids
-            ? [{ date: new Date(), poids: parseFloat(nouveau.poids) }]
-            : [],
-          traitements: {}
-        }
-      ]);
-    
-      setNouveau({
-        id: "",
-        sexe: "",
-        naissance: "",
-        lot: "Couveuse",
-        poids: ""
-      });
-    };
     const copy = [...chevreaux];
     const now = new Date();
     selection.forEach(i => {
