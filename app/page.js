@@ -27,7 +27,29 @@ function statutTraitement(c) {
   if (d < now) return "🔴";
   return "🟢";
 }
+function couleurCollier(id) {
+  const couleurs = {
+    1: "red",
+    2: "blue",
+    3: "green",
+    4: "yellow",
+    5: "orange",
+    6: "purple",
+    7: "pink",
+    8: "brown",
+    9: "black",
+    10: "gray",
+    11: "cyan",
+    12: "magenta",
+    13: "lime",
+    14: "teal",
+    15: "gold",
+    16: "navy"
+  };
 
+  const num = parseInt(id);
+  return couleurs[num] || null;
+}
 export default function App() {
   const [chevreaux, setChevreaux] = useState([]);
   const [nouveau, setNouveau] = useState({
@@ -181,7 +203,14 @@ export default function App() {
           {liste.map((c,i)=>(
             <div key={i} className={`grid grid-cols-8 gap-2 p-2 border mb-1 ${selection.includes(i)?"bg-blue-100":""}`} onClick={()=>toggleSelect(i)}>
 
-              <div>#{c.id}</div>
+              <div style={{
+  backgroundColor: couleurCollier(c.id),
+  color: "white",
+  padding: "4px",
+  borderRadius: "4px"
+}}>
+  #{c.id}
+</div>
               <div>{c.sexe}</div>
               <div>{ageJours(c.naissance)} j</div>
               <div>{c.lot}</div>
