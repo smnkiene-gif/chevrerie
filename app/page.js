@@ -30,6 +30,13 @@ function statutTraitement(c) {
 
 export default function App() {
   const [chevreaux, setChevreaux] = useState([]);
+  const [nouveau, setNouveau] = useState({
+    id: "",
+    sexe: "",
+    naissance: "",
+    lot: "Couveuse",
+    poids: ""
+  });
   const [selection, setSelection] = useState([]);
   const [filtreLot, setFiltreLot] = useState("");
   const [tri, setTri] = useState("");
@@ -67,6 +74,29 @@ export default function App() {
   };
 
   const traiter = () => {
+    const ajouterChevreau = () => {
+      if (!nouveau.id) return;
+    
+      setChevreaux([
+        ...chevreaux,
+        {
+          ...nouveau,
+          poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
+          pesees: nouveau.poids
+            ? [{ date: new Date(), poids: parseFloat(nouveau.poids) }]
+            : [],
+          traitements: {}
+        }
+      ]);
+    
+      setNouveau({
+        id: "",
+        sexe: "",
+        naissance: "",
+        lot: "Couveuse",
+        poids: ""
+      });
+    };
     const copy = [...chevreaux];
     const now = new Date();
     selection.forEach(i => {
@@ -96,6 +126,44 @@ export default function App() {
     <div className="p-4 grid gap-4">
 
       <h1 className="text-2xl font-bold">Gestion élevage</h1>
+      {/* AJOUT CHEVREAU */}
+<div className="border p-3">
+  <h2>Ajouter un chevreau</h2>
+
+  <input
+    placeholder="Numéro"
+    value={nouveau.id}
+    onChange={(e)=>setNouveau({...nouveau, id: e.target.value})}
+  />
+
+  <input
+    placeholder="Sexe"
+    value={nouveau.sexe}
+    onChange={(e)=>setNouveau({...nouveau, sexe: e.target.value})}
+  />
+
+  <input
+    type="date"
+    value={nouveau.naissance}
+    onChange={(e)=>setNouveau({...nouveau, naissance: e.target.value})}
+  />
+
+  <input
+    placeholder="Lot"
+    value={nouveau.lot}
+    onChange={(e)=>setNouveau({...nouveau, lot: e.target.value})}
+  />
+
+  <input
+    placeholder="Poids naissance"
+    value={nouveau.poids}
+    onChange={(e)=>setNouveau({...nouveau, poids: e.target.value})}
+  />
+
+  <button onClick={ajouterChevreau}>
+    ➕ Ajouter
+  </button>
+</div>
 
       {/* FILTRES */}
       <div className="flex gap-2">
