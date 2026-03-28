@@ -20,6 +20,7 @@ function statutPesee(c) {
   if (diff >= 7) return "🟡";
   return "🟢";
 }
+
 function statutTraitement(c) {
   if (!c.traitements || !c.traitements.vecoxan) return "🟡";
 
@@ -30,7 +31,6 @@ function statutTraitement(c) {
   if (d.toDateString() === now.toDateString()) return "🟡";
   return "🟢";
 }
-
 
 function couleurCollier(id) {
   const couleurs = {
@@ -55,6 +55,7 @@ export default function App() {
   });
 
   const [selection, setSelection] = useState([]);
+  const [editIndex, setEditIndex] = useState(null);
 
   useEffect(()=>{
     const data = localStorage.getItem("elevage");
@@ -70,12 +71,22 @@ export default function App() {
   const ajouterChevreau = () => {
     if (!nouveau.id) return;
 
-    setChevreaux([...chevreaux,{
-      ...nouveau,
-      poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
-      pesees: nouveau.poids ? [{date:new Date(), poids:parseFloat(nouveau.poids)}] : [],
-      traitements:{}
-    }]);
+    if (editIndex !== null) {
+      const copy = [...chevreaux];
+      copy[editIndex] = {
+        ...copy[editIndex],
+        ...nouveau
+      };
+      setChevreaux(copy);
+      setEditIndex(null);
+    } else {
+      setChevreaux([...chevreaux,{
+        ...nouveau,
+        poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
+        pesees: nouveau.poids ? [{date:new Date(), poids:parseFloat(nouveau.poids)}] : [],
+        traitements:{}
+      }]);
+    }
 
     setNouveau({
       id:"", sexe:"", naissance:"", lot:"Couveuse",
@@ -83,12 +94,19 @@ export default function App() {
     });
   };
 
-  const ajouterPesee = (i, poids) => {
+  const ajouterPesee = (i) => {
+    const poids = prompt("Poids ?");
     if (!poids) return;
+
+    const dateInput = prompt("Date (YYYY-MM-DD) ou vide = aujourd’hui");
+    const date = dateInput ? new Date(dateInput) : new Date();
+
     const copy = [...chevreaux];
     copy[i].poids = parseFloat(poids);
+
     if(!copy[i].pesees) copy[i].pesees=[];
-    copy[i].pesees.push({date:new Date(), poids:parseFloat(poids)});
+    copy[i].pesees.push({date, poids:parseFloat(poids)});
+
     setChevreaux(copy);
   };
 
@@ -114,13 +132,15 @@ export default function App() {
       : [...selection,i]);
   };
 
-  // ===== LISTES =====
+  const chargerEdition = (i)=>{
+    setNouveau({...chevreaux[i]});
+    setEditIndex(i);
+  };
+
+  // ===== ALERTES =====
 
   const aFaire = chevreaux.map((c,i)=>{
-    const pesee = statutPesee(c);
-    const traitement = statutTraitement(c);
-
-    if(pesee !== "🟢" || traitement !== "🟢"){
+    if (statutPesee(c)!=="🟢" || statutTraitement(c)!=="🟢") {
       return {c,i};
     }
     return null;
@@ -139,9 +159,9 @@ export default function App() {
         <button onClick={()=>setVue("alertes")}>🟡 À faire</button>
       </div>
 
-      {/* AJOUT */}
+      {/* FORMULAIRE */}
       <div className="border p-3">
-        <h2>Ajouter</h2>
+        <h2>{editIndex !== null ? "Modifier" : "Ajouter"} un chevreau</h2>
 
         <input placeholder="Numéro"
           value={nouveau.id}
@@ -182,32 +202,60 @@ export default function App() {
           onChange={(e)=>setNouveau({...nouveau,pere:e.target.value})}
         />
 
-        <button onClick={ajouterChevreau}>➕ Ajouter</button>
+        <button onClick={ajouterChevreau}>
+          {editIndex !== null ? "💾 Modifier" : "➕ Ajouter"}
+        </button>
       </div>
 
-      {/* ===== VUE ===== */}
+      {/* ===== VUE GLOBAL ===== */}
 
       {vue==="global" && (
         <div>
+
+          {/* ENTÊTES */}
+          <div className="grid grid-cols-10 gap-2 font-bold border-b pb-1">
+            <div>ID</div>
+            <div>Sexe</div>
+            <div>Âge</div>
+            <div>Lot</div>
+            <div>Poids</div>
+            <div>Pesée</div>
+            <div>Traitement</div>
+            <div>Mère</div>
+            <div>Père</div>
+            <div>Actions</div>
+          </div>
+
           {chevreaux.map((c,i)=>(
             <div key={i}
-              className="grid grid-cols-8 gap-2 border p-2 mb-1"
-              onClick={()=>toggleSelect(i)}
+              className={`grid grid-cols-10 gap-2 border p-2 mb-1 ${selection.includes(i)?"bg-blue-100":""}`}
             >
+
               <div style={{backgroundColor:couleurCollier(c.id),color:"white"}}>
                 #{c.id}
               </div>
+
               <div>{c.sexe}</div>
               <div>{ageJours(c.naissance)} j</div>
               <div>{c.lot}</div>
               <div>{c.poids ? c.poids.toFixed(2) : "-"}</div>
               <div>{statutPesee(c)}</div>
               <div>{statutTraitement(c)}</div>
-              <input onBlur={(e)=>ajouterPesee(i,e.target.value)} />
+              <div>{c.mere || "-"}</div>
+              <div>{c.pere || "-"}</div>
+
+              <div className="flex gap-1">
+                <button onClick={()=>ajouterPesee(i)}>⚖️</button>
+                <button onClick={()=>chargerEdition(i)}>✏️</button>
+                <button onClick={()=>toggleSelect(i)}>✔️</button>
+              </div>
+
             </div>
           ))}
         </div>
       )}
+
+      {/* ===== ALERTES ===== */}
 
       {vue==="alertes" && (
         <div>
@@ -217,23 +265,15 @@ export default function App() {
 
           {aFaire.map(({c,i})=>(
             <div key={i} className="border p-2 mb-1">
-
               <strong>#{c.id}</strong> - {c.lot}
-
               <div>Pesée : {statutPesee(c)}</div>
               <div>Traitement : {statutTraitement(c)}</div>
 
-              <button onClick={()=>ajouterPesee(i, prompt("Poids ?"))}>
-                Peser
-              </button>
-
+              <button onClick={()=>ajouterPesee(i)}>Peser</button>
               <button onClick={()=>{
                 setSelection([i]);
                 traiter();
-              }}>
-                Traiter
-              </button>
-
+              }}>Traiter</button>
             </div>
           ))}
         </div>
