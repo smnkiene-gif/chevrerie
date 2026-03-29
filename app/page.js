@@ -11,25 +11,24 @@ function ageJours(date) {
 
 function statutPesee(c) {
   if (!c.pesees || c.pesees.length === 0) return "🟡";
-
   const last = new Date(c.pesees[c.pesees.length - 1].date);
   const now = new Date();
   const diff = (now - last) / (1000*60*60*24);
-
   if (diff >= 8) return "🔴";
   if (diff >= 7) return "🟡";
   return "🟢";
 }
 
 function statutTraitement(c) {
-  if (!c.traitements || !c.traitements.vecoxan) return "🟡";
+  if (!c.traitements || c.traitements.length === 0) return "🟢";
 
   const now = new Date();
-  const d = new Date(c.traitements.vecoxan.prochaine);
 
-  if (d < now) return "🔴";
-  if (d.toDateString() === now.toDateString()) return "🟡";
-  return "🟢";
+  const actif = c.traitements.find(t => new Date(t.fin) >= now);
+
+  if (!actif) return "🟢";
+
+  return "🟡";
 }
 
 function couleurCollier(id) {
@@ -47,15 +46,12 @@ function couleurCollier(id) {
 export default function App() {
 
   const [chevreaux, setChevreaux] = useState([]);
-  const [vue, setVue] = useState("global");
-
   const [nouveau, setNouveau] = useState({
     id:"", sexe:"", naissance:"", lot:"Couveuse",
     poids:"", mere:"", pere:""
   });
 
   const [selection, setSelection] = useState([]);
-  const [editIndex, setEditIndex] = useState(null);
 
   useEffect(()=>{
     const data = localStorage.getItem("elevage");
@@ -66,27 +62,17 @@ export default function App() {
     localStorage.setItem("elevage", JSON.stringify(chevreaux));
   },[chevreaux]);
 
-  // ===== ACTIONS =====
+  // ===== AJOUT =====
 
   const ajouterChevreau = () => {
     if (!nouveau.id) return;
 
-    if (editIndex !== null) {
-      const copy = [...chevreaux];
-      copy[editIndex] = {
-        ...copy[editIndex],
-        ...nouveau
-      };
-      setChevreaux(copy);
-      setEditIndex(null);
-    } else {
-      setChevreaux([...chevreaux,{
-        ...nouveau,
-        poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
-        pesees: nouveau.poids ? [{date:new Date(), poids:parseFloat(nouveau.poids)}] : [],
-        traitements:{}
-      }]);
-    }
+    setChevreaux([...chevreaux,{
+      ...nouveau,
+      poids: nouveau.poids ? parseFloat(nouveau.poids) : null,
+      pesees: [],
+      traitements:[]
+    }]);
 
     setNouveau({
       id:"", sexe:"", naissance:"", lot:"Couveuse",
@@ -94,57 +80,60 @@ export default function App() {
     });
   };
 
+  // ===== PESEE =====
+
   const ajouterPesee = (i) => {
-    const poids = prompt("Poids ?");
+    const poids = prompt("Poids (kg) ?");
     if (!poids) return;
 
-    const dateInput = prompt("Date (YYYY-MM-DD) ou vide = aujourd’hui");
+    const dateInput = prompt("Date (YYYY-MM-DD) ?");
     const date = dateInput ? new Date(dateInput) : new Date();
 
     const copy = [...chevreaux];
     copy[i].poids = parseFloat(poids);
 
     if(!copy[i].pesees) copy[i].pesees=[];
-    copy[i].pesees.push({date, poids:parseFloat(poids)});
-
-    setChevreaux(copy);
-  };
-
-  const traiter = () => {
-    const copy = [...chevreaux];
-    const now = new Date();
-
-    selection.forEach(i=>{
-      if(!copy[i].traitements) copy[i].traitements={};
-      copy[i].traitements.vecoxan = {
-        derniere: now,
-        prochaine: new Date(now.getTime()+21*86400000)
-      };
+    copy[i].pesees.push({
+      date,
+      poids: parseFloat(poids)
     });
 
     setChevreaux(copy);
-    setSelection([]);
   };
 
-  const toggleSelect = (i)=>{
-    setSelection(selection.includes(i)
-      ? selection.filter(x=>x!==i)
-      : [...selection,i]);
+  // ===== TRAITEMENT COMPLET =====
+
+  const ajouterTraitement = (i) => {
+    const produit = prompt("Produit ?");
+    if (!produit) return;
+
+    const posologie = prompt("Posologie ?");
+    const voie = prompt("Voie ?");
+    const frequence = prompt("Fréquence ?");
+    const fin = prompt("Date fin (YYYY-MM-DD) ?");
+
+    const copy = [...chevreaux];
+
+    if(!copy[i].traitements) copy[i].traitements=[];
+
+    copy[i].traitements.push({
+      produit,
+      posologie,
+      voie,
+      frequence,
+      fin
+    });
+
+    setChevreaux(copy);
   };
 
-  const chargerEdition = (i)=>{
-    setNouveau({...chevreaux[i]});
-    setEditIndex(i);
+  const getTraitementInfo = (c) => {
+    if (!c.traitements || c.traitements.length === 0) return "";
+
+    return c.traitements.map(t =>
+      `${t.produit} | ${t.posologie} | ${t.voie} | ${t.frequence} | fin: ${t.fin}`
+    ).join("\n");
   };
-
-  // ===== ALERTES =====
-
-  const aFaire = chevreaux.map((c,i)=>{
-    if (statutPesee(c)!=="🟢" || statutTraitement(c)!=="🟢") {
-      return {c,i};
-    }
-    return null;
-  }).filter(Boolean);
 
   // ===== UI =====
 
@@ -153,15 +142,9 @@ export default function App() {
 
       <h1 className="text-2xl font-bold">Gestion élevage</h1>
 
-      {/* NAV */}
-      <div className="flex gap-2">
-        <button onClick={()=>setVue("global")}>Global</button>
-        <button onClick={()=>setVue("alertes")}>🟡 À faire</button>
-      </div>
-
-      {/* FORMULAIRE */}
+      {/* AJOUT */}
       <div className="border p-3">
-        <h2>{editIndex !== null ? "Modifier" : "Ajouter"} un chevreau</h2>
+        <h2>Ajouter</h2>
 
         <input placeholder="Numéro"
           value={nouveau.id}
@@ -202,86 +185,59 @@ export default function App() {
           onChange={(e)=>setNouveau({...nouveau,pere:e.target.value})}
         />
 
-        <button onClick={ajouterChevreau}>
-          {editIndex !== null ? "💾 Modifier" : "➕ Ajouter"}
-        </button>
+        <button onClick={ajouterChevreau}>➕ Ajouter</button>
       </div>
 
-      {/* ===== VUE GLOBAL ===== */}
+      {/* TABLEAU */}
+      <div>
 
-      {vue==="global" && (
-        <div>
+        <div className="grid grid-cols-10 gap-2 font-bold border-b pb-1">
+          <div>ID</div>
+          <div>Sexe</div>
+          <div>Âge</div>
+          <div>Lot</div>
+          <div>Poids</div>
+          <div>Pesée</div>
+          <div>Traitement</div>
+          <div>Mère</div>
+          <div>Père</div>
+          <div>Actions</div>
+        </div>
 
-          {/* ENTÊTES */}
-          <div className="grid grid-cols-10 gap-2 font-bold border-b pb-1">
-            <div>ID</div>
-            <div>Sexe</div>
-            <div>Âge</div>
-            <div>Lot</div>
-            <div>Poids</div>
-            <div>Pesée</div>
-            <div>Traitement</div>
-            <div>Mère</div>
-            <div>Père</div>
-            <div>Actions</div>
+        {chevreaux.map((c,i)=>(
+          <div key={i}
+            className="grid grid-cols-10 gap-2 border p-2 mb-1"
+            title={getTraitementInfo(c)}
+          >
+
+            <div style={{
+              backgroundColor: couleurCollier(c.id),
+              color:"white"
+            }}>
+              #{c.id}
+            </div>
+
+            <div>{c.sexe}</div>
+            <div>{ageJours(c.naissance)} j</div>
+            <div>{c.lot}</div>
+
+            <div>
+              {c.poids !== null ? c.poids.toFixed(2) : "-"} kg
+            </div>
+
+            <div>{statutPesee(c)}</div>
+            <div>{statutTraitement(c)}</div>
+            <div>{c.mere || "-"}</div>
+            <div>{c.pere || "-"}</div>
+
+            <div className="flex gap-1">
+              <button onClick={()=>ajouterPesee(i)}>⚖️</button>
+              <button onClick={()=>ajouterTraitement(i)}>💊</button>
+            </div>
+
           </div>
+        ))}
 
-          {chevreaux.map((c,i)=>(
-            <div key={i}
-              className={`grid grid-cols-10 gap-2 border p-2 mb-1 ${selection.includes(i)?"bg-blue-100":""}`}
-            >
-
-              <div style={{backgroundColor:couleurCollier(c.id),color:"white"}}>
-                #{c.id}
-              </div>
-
-              <div>{c.sexe}</div>
-              <div>{ageJours(c.naissance)} j</div>
-              <div>{c.lot}</div>
-              <div>{c.poids ? c.poids.toFixed(2) : "-"}</div>
-              <div>{statutPesee(c)}</div>
-              <div>{statutTraitement(c)}</div>
-              <div>{c.mere || "-"}</div>
-              <div>{c.pere || "-"}</div>
-
-              <div className="flex gap-1">
-                <button onClick={()=>ajouterPesee(i)}>⚖️</button>
-                <button onClick={()=>chargerEdition(i)}>✏️</button>
-                <button onClick={()=>toggleSelect(i)}>✔️</button>
-              </div>
-
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ===== ALERTES ===== */}
-
-      {vue==="alertes" && (
-        <div>
-          <h2>🟡 À faire aujourd’hui</h2>
-
-          {aFaire.length === 0 && <div>Rien à faire 👍</div>}
-
-          {aFaire.map(({c,i})=>(
-            <div key={i} className="border p-2 mb-1">
-              <strong>#{c.id}</strong> - {c.lot}
-              <div>Pesée : {statutPesee(c)}</div>
-              <div>Traitement : {statutTraitement(c)}</div>
-
-              <button onClick={()=>ajouterPesee(i)}>Peser</button>
-              <button onClick={()=>{
-                setSelection([i]);
-                traiter();
-              }}>Traiter</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ACTIONS */}
-      <div className="flex gap-2">
-        <button onClick={traiter}>💊 Traiter sélection</button>
       </div>
 
     </div>
